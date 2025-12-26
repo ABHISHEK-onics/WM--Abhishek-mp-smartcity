@@ -2,14 +2,14 @@
 # Smart Waste Bin Monitoring & Collection Optimization System  
 **Virtual IoT Design Challenge – Smart City Living Lab (IIITH)**
 
-## 📌 Project Overview
+##  Project Overview
 Urban waste management systems often suffer from inefficient collection schedules, overflowing bins, and unnecessary operational costs. This project proposes a **Smart Waste Bin Monitoring and Collection Optimization System** using Internet of Things (IoT) concepts to enable real-time monitoring and intelligent decision-making for waste collection.
 
 The system monitors waste bin fill levels, notifies authorities when bins are near capacity, and generates optimized routes for garbage collection vehicles.
 
 ---
 
-## 🎯 Objectives
+## Objectives
 - Monitor fill levels of waste bins across different city zones
 - Automatically notify authorities when bins exceed a threshold level
 - Optimize garbage truck routes to reduce fuel consumption and time
@@ -17,7 +17,7 @@ The system monitors waste bin fill levels, notifies authorities when bins are ne
 
 ---
 
-## 🏗️ System Architecture
+##  System Architecture
 
 ### Hardware Components
 - **Ultrasonic Sensor:** Measures distance to waste surface to estimate fill level
@@ -33,7 +33,7 @@ The system monitors waste bin fill levels, notifies authorities when bins are ne
 
 ---
 
-## 🔄 Data Flow Design
+##  Data Flow Design
 1. Ultrasonic sensor measures the distance to waste
 2. ESP32 converts distance into fill percentage
 3. Data is transmitted via LoRaWAN or Wi-Fi
@@ -43,7 +43,7 @@ The system monitors waste bin fill levels, notifies authorities when bins are ne
 
 ---
 
-## 📡 Communication Protocols
+##  Communication Protocols
 - **MQTT:** Lightweight and efficient for IoT data transmission
 - **HTTP/REST:** Used for dashboard and reporting services
 
@@ -52,7 +52,7 @@ MQTT minimizes bandwidth usage and power consumption, making it suitable for lar
 
 ---
 
-## 🚛 Route Optimization Strategy
+##  Route Optimization Strategy
 
 ### Decision Logic
 - Bins with fill level **greater than 80%** are marked for collection
@@ -70,7 +70,7 @@ Assign route to garbage truck
 
 ---
 
-## 🔋 Power Management Plan
+## Power Management Plan
 - Periodic sensing instead of continuous operation
 - ESP32 operates in deep sleep mode
 - Low-power LoRa communication
@@ -80,7 +80,7 @@ Assign route to garbage truck
 
 ---
 
-## 🛡️ Reliability & Fault Handling
+##  Reliability & Fault Handling
 - Multiple sensor readings averaged to reduce noise
 - Automatic calibration when bin is empty
 - Detection of abnormal or stagnant sensor data
@@ -88,14 +88,14 @@ Assign route to garbage truck
 
 ---
 
-## 🌍 Scalability & Network Considerations
+## Scalability & Network Considerations
 - Supports deployment of **100+ bins across multiple zones**
 - **Star topology** (Bin → Gateway → Cloud) used for simplicity and efficiency
 - Easy expansion by adding additional gateways
 
 ---
 
-## 💰 Cost & Feasibility (Approximate per Bin)
+##  Cost & Feasibility (Approximate per Bin)
 
 | Component | Estimated Cost (INR) |
 |--------|---------------------|
@@ -112,19 +112,128 @@ Assign route to garbage truck
 
 ---
 
-## 📁 Repository Structure
+##  Repository Structure
 
 ---
 
-## 🧠 Key Highlights
+## Key Highlights
 - End-to-end IoT system design
 - Low-power and scalable architecture
 - Practical smart city use case
 - Conceptual design suitable for real-world deployment
 
 ---
+Hardware/
+ └── Sensor_Code/
+     └── esp32_ultrasonic_mqtt.ino
+     #include <WiFi.h>
+#include <PubSubClient.h>
 
-## 👤 Author
+// -------- WiFi Credentials --------
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// -------- MQTT Broker --------
+const char* mqttServer = "broker.hivemq.com";
+const int mqttPort = 1883;
+const char* mqttTopic = "smartcity/wastebin/filllevel";
+
+// -------- Ultrasonic Pins --------
+#define TRIG_PIN 5
+#define ECHO_PIN 18
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// -------- Bin Parameters --------
+const float BIN_HEIGHT_CM = 50.0;   // Height of bin
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  connectWiFi();
+  client.setServer(mqttServer, mqttPort);
+}
+
+void loop() {
+  if (!client.connected()) {
+    connectMQTT();
+  }
+  client.loop();
+
+  float distance = getDistance();
+  float fillLevel = calculateFillLevel(distance);
+
+  publishData(fillLevel);
+
+  // Deep sleep for power saving (30 minutes)
+  esp_sleep_enable_timer_wakeup(30 * 60 * 1000000ULL);
+  esp_deep_sleep_start();
+}
+
+// -------- Functions --------
+
+void connectWiFi() {
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");
+}
+
+void connectMQTT() {
+  while (!client.connected()) {
+    Serial.print("Connecting to MQTT...");
+    if (client.connect("ESP32_WasteBin")) {
+      Serial.println("connected");
+    } else {
+      delay(2000);
+    }
+  }
+}
+
+float getDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+  float distance = duration * 0.034 / 2;
+  return distance;
+}
+
+float calculateFillLevel(float distance) {
+  if (distance > BIN_HEIGHT_CM) distance = BIN_HEIGHT_CM;
+  float fill = ((BIN_HEIGHT_CM - distance) / BIN_HEIGHT_CM) * 100;
+  return fill;
+}
+
+void publishData(float fillLevel) {
+  char payload[50];
+  snprintf(payload, sizeof(payload), "Fill Level: %.2f %%", fillLevel);
+
+  client.publish(mqttTopic, payload);
+  Serial.println(payload);
+}
+
+## 🧪 Sample Implementation Code
+This repository includes a sample ESP32 firmware that:
+- Reads ultrasonic sensor data
+- Calculates waste bin fill percentage
+- Publishes data using MQTT protocol
+- Uses deep sleep for power efficiency
+
+The code is provided for conceptual demonstration and can be extended for LoRaWAN or NB-IoT deployments.
+
+
+## Author
 **Abhishek**  
 Virtual IoT Design Challenge  
 Smart City Living Lab – IIITH
