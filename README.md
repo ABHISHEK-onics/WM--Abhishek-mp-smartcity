@@ -223,7 +223,7 @@ void publishData(float fillLevel) {
   Serial.println(payload);
 }
 
-## 🧪 Sample Implementation Code
+##  Sample Implementation Code
 This repository includes a sample ESP32 firmware that:
 - Reads ultrasonic sensor data
 - Calculates waste bin fill percentage
